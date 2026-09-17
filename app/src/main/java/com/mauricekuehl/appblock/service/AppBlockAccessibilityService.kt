@@ -15,11 +15,12 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        isConnected = true
         scheduleRepository = ScheduleRepository(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event == null || event.eventType !in SUPPORTED_EVENT_TYPES) return
 
         val foregroundPackage = event.packageName?.toString() ?: return
         if (foregroundPackage == packageName) return
@@ -47,7 +48,26 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() = Unit
 
-    private companion object {
+    override fun onUnbind(intent: Intent?): Boolean {
+        isConnected = false
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        isConnected = false
+        super.onDestroy()
+    }
+
+    companion object {
+        @Volatile
+        var isConnected: Boolean = false
+            private set
+
+        private val SUPPORTED_EVENT_TYPES = setOf(
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+        )
+
         const val BLOCK_DEBOUNCE_MS = 750L
     }
 }

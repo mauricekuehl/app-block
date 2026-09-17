@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,9 +84,12 @@ import com.mauricekuehl.appblock.data.ScheduleRepository
 import com.mauricekuehl.appblock.service.AppBlockAccessibilityService
 import com.mauricekuehl.appblock.ui.theme.AppBlockTheme
 import java.time.DayOfWeek
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val accessibilityEnabled = mutableStateOf(false)
+    private val accessibilityConnected = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +102,7 @@ class MainActivity : ComponentActivity() {
                 AppBlockScreen(
                     schedule = schedule,
                     accessibilityEnabled = accessibilityEnabled.value,
+                    accessibilityConnected = accessibilityConnected.value,
                     onScheduleChange = { updated ->
                         schedule = updated
                         scheduleRepository.save(updated)
@@ -112,7 +117,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshAccessibilityStatus()
+        lifecycleScope.launch {
+            delay(750)
+            refreshAccessibilityStatus()
+        }
+    }
+
+    private fun refreshAccessibilityStatus() {
         accessibilityEnabled.value = isAccessibilityServiceEnabled(this)
+        accessibilityConnected.value = AppBlockAccessibilityService.isConnected
     }
 }
 
@@ -121,6 +135,7 @@ class MainActivity : ComponentActivity() {
 private fun AppBlockScreen(
     schedule: BlockSchedule,
     accessibilityEnabled: Boolean,
+    accessibilityConnected: Boolean,
     onScheduleChange: (BlockSchedule) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
 ) {
@@ -132,7 +147,7 @@ private fun AppBlockScreen(
             .map { InstalledApp(appsRepository.labelFor(it), it) }
             .sortedBy { it.label.lowercase() }
     }
-    val currentlyBlocking = ScheduleEvaluator.isActive(schedule)
+    val currentlyBlocking = accessibilityConnected && ScheduleEvaluator.isActive(schedule)
 
     Scaffold(
         topBar = {
@@ -175,6 +190,7 @@ private fun AppBlockScreen(
                 StatusCard(
                     schedule = schedule,
                     accessibilityEnabled = accessibilityEnabled,
+                    accessibilityConnected = accessibilityConnected,
                     onEnabledChange = { onScheduleChange(schedule.copy(enabled = it)) },
                     onOpenAccessibilitySettings = onOpenAccessibilitySettings,
                 )
@@ -221,12 +237,15 @@ private fun AppBlockScreen(
 private fun StatusCard(
     schedule: BlockSchedule,
     accessibilityEnabled: Boolean,
+    accessibilityConnected: Boolean,
     onEnabledChange: (Boolean) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
 ) {
+    val ready = accessibilityEnabled && accessibilityConnected
+
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (accessibilityEnabled) {
+            containerColor = if (ready) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
                 MaterialTheme.colorScheme.errorContainer
@@ -243,27 +262,34 @@ private fun StatusCard(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = if (accessibilityEnabled) "Blocking is ready" else "One permission needed",
+                        text = when {
+                            !accessibilityEnabled -> "One permission needed"
+                            !accessibilityConnected -> "Service needs a restart"
+                            else -> "Blocking is ready"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = if (accessibilityEnabled) {
-                            "App Block can detect and stop selected apps."
-                        } else {
-                            "Enable App Block in Accessibility settings so it can detect app launches."
+                        text = when {
+                            !accessibilityEnabled ->
+                                "Enable App Block in Accessibility settings so it can detect app launches."
+                            !accessibilityConnected ->
+                                "In Accessibility settings, switch App Block off and back on."
+                            else ->
+                                "App Block can detect and stop selected apps."
                         },
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
                 Switch(checked = schedule.enabled, onCheckedChange = onEnabledChange)
             }
-            if (!accessibilityEnabled) {
+            if (!ready) {
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.Settings, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Open Accessibility settings")
+                    Text(if (accessibilityEnabled) "Restart Accessibility service" else "Open Accessibility settings")
                 }
             }
         }
