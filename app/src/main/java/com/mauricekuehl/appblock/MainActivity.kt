@@ -81,6 +81,7 @@ import com.mauricekuehl.appblock.data.InstalledApp
 import com.mauricekuehl.appblock.data.InstalledAppsRepository
 import com.mauricekuehl.appblock.data.ScheduleEvaluator
 import com.mauricekuehl.appblock.data.ScheduleRepository
+import com.mauricekuehl.appblock.service.AccessibilityServiceHealth
 import com.mauricekuehl.appblock.service.AppBlockAccessibilityService
 import com.mauricekuehl.appblock.ui.theme.AppBlockTheme
 import java.time.DayOfWeek
@@ -90,9 +91,11 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val accessibilityEnabled = mutableStateOf(false)
     private val accessibilityConnected = mutableStateOf(false)
+    private lateinit var accessibilityServiceHealth: AccessibilityServiceHealth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        accessibilityServiceHealth = AccessibilityServiceHealth(this)
         val scheduleRepository = ScheduleRepository(this)
 
         setContent {
@@ -126,7 +129,7 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshAccessibilityStatus() {
         accessibilityEnabled.value = isAccessibilityServiceEnabled(this)
-        accessibilityConnected.value = AppBlockAccessibilityService.isConnected
+        accessibilityConnected.value = accessibilityServiceHealth.isRecentlyAlive()
     }
 }
 

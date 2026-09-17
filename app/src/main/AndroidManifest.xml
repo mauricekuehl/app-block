@@ -37,7 +37,9 @@
             android:description="@string/accessibility_service_description"
             android:exported="true"
             android:label="App Block"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:process=":accessibility"
+            android:stopWithTask="false">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>

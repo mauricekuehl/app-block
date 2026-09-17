@@ -21,6 +21,17 @@ A small, private-by-design Android app that keeps selected apps out of reach dur
 
 Future APKs from this repository use the same signing key and a higher version code, so they install as updates without removing your settings.
 
+### Xiaomi, Redmi, and POCO (HyperOS)
+
+HyperOS may stop third-party accessibility services unless background execution is allowed. For reliable blocking:
+
+1. Set **App Block → Battery/Power → No restrictions**.
+2. Enable **Settings → Apps → Permissions → Background autostart → App Block**.
+3. Lock App Block in the Recents screen.
+4. After installing an update, switch App Block's Accessibility permission off, wait five seconds, and switch it on again.
+
+Removing the app from Recents is supported. Do not use **Force stop** in Android's App info screen, because Android intentionally stops the accessibility service until the app is opened again.
+
 > [!NOTE]
 > Android requires an Accessibility Service for immediate app-launch detection. App Block listens only for the package name of the foreground app. It cannot read window content, does not request internet access, and stores its configuration only on the device. This is a focus aid rather than parental-control software: anyone with access to system settings can disable the service or uninstall the app.
 
