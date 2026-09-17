@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">App Block</string>
+    <string name="accessibility_service_description">Detects when a selected app opens during your block schedule and replaces it with the App Block screen. No screen content is read or stored.</string>
+</resources>
